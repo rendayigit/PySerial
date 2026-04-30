@@ -189,6 +189,12 @@ class SerialSession:
         self.config = config or load_config()
         self.port: serial.Serial | None = None
 
+    def _port_name(self) -> str:
+        if self.port is not None and self.port.port:
+            return str(self.port.port)
+
+        return str(self.config["serial"].get("port", "<unknown>"))
+
     @property
     def is_open(self) -> bool:
         return self.port is not None and self.port.is_open
@@ -196,11 +202,14 @@ class SerialSession:
     def open(self) -> SerialSession:
         if not self.is_open:
             self.port = open_port(self.config)
+            log_message("OPEN", self._port_name(), self.config)
         return self
 
     def close(self) -> None:
         if self.port is not None:
+            port_name = self._port_name()
             self.port.close()
+            log_message("CLOSE", port_name, self.config)
             self.port = None
 
     def send_once(self, message: str | None = None) -> str:

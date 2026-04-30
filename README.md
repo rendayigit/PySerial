@@ -151,12 +151,13 @@ If you want a different fixed scenario, copy `sample_scenario.py` and change the
 - Each log file is named with the date and time when it is first created.
 - Timestamps are precise to the millisecond.
 - Newest log entry is written at the top.
-- Direction labels are included: `TX`, `RX`, or `RX TIME`.
+- Direction labels are included: `OPEN`, `CLOSE`, `TX`, `RX`, or `RX TIME`.
 
 ## Notes
 
 - `send_and_receive()` sends once, then reads once on the same port.
 - `send_defined()` sends once and receives once by looking up a message name in `defined_messages.json`.
+- `connect()` and `disconnect()` activity is logged through the underlying session open/close path.
 - `SerialSession` keeps the port open for repeated calls when you want a persistent manual session.
 - On receive timeout with no data, the receive functions return `[]`.
 - `send_once()` and `send_and_receive()` require an explicit message argument.
