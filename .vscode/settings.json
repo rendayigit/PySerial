@@ -15,9 +15,9 @@
       "label": "$(symbol-function) Defined Messages",
       "tasks": [
         {
-          "label": "Interactive defined_messages",
-          "task": "Python: Interactive defined_messages",
-          "description": "$(terminal-powershell) Open defined_messages.py in an interactive Python terminal"
+          "label": "Interactive message_helpers",
+          "task": "Python: Interactive message_helpers",
+          "description": "$(terminal-powershell) Open message_helpers.py in an interactive Python terminal"
         },
         {
           "label": "Send idle",
@@ -38,8 +38,8 @@
     },
     {
       "label": "$(testing-run-icon) Run Example",
-      "task": "Python: Run sample scenario",
-      "tooltip": "Run the simple scripted serial example from sample_scenario.py"
+      "task": "Python: Run example scenario",
+      "tooltip": "Run the simple scripted serial example from example_scenario.py"
     }
   ]
 }

@@ -40,10 +40,10 @@
       "problemMatcher": []
     },
     {
-      "label": "Python: Interactive defined_messages",
+      "label": "Python: Interactive message_helpers",
       "type": "shell",
       "command": "${command:python.interpreterPath}",
-      "args": ["-i", "${workspaceFolder}/defined_messages.py"],
+      "args": ["-i", "${workspaceFolder}/message_helpers.py"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -59,7 +59,7 @@
       "label": "Python: Send idle",
       "type": "shell",
       "command": "${command:python.interpreterPath}",
-      "args": ["-c", "import defined_messages; defined_messages.send_idle()"],
+      "args": ["-c", "import message_helpers; message_helpers.send_idle()"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -75,7 +75,7 @@
       "label": "Python: Start",
       "type": "shell",
       "command": "${command:python.interpreterPath}",
-      "args": ["-c", "import defined_messages; defined_messages.start()"],
+      "args": ["-c", "import message_helpers; message_helpers.start()"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -91,7 +91,7 @@
       "label": "Python: Stop",
       "type": "shell",
       "command": "${command:python.interpreterPath}",
-      "args": ["-c", "import defined_messages; defined_messages.stop()"],
+      "args": ["-c", "import message_helpers; message_helpers.stop()"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -104,10 +104,10 @@
       "problemMatcher": []
     },
     {
-      "label": "Python: Run sample scenario",
+      "label": "Python: Run example scenario",
       "type": "shell",
       "command": "${command:python.interpreterPath}",
-      "args": ["${workspaceFolder}/sample_scenario.py"],
+      "args": ["${workspaceFolder}/example_scenario.py"],
       "options": {
         "cwd": "${workspaceFolder}"
       },

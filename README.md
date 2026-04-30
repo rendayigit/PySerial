@@ -5,9 +5,9 @@ Small serial helper for VS Code with both interactive and scripted workflows.
 ## Files
 
 - `py_serial.py`: main script with the serial helpers.
-- `defined_messages.py`: predefined helper functions such as `send_idle()`, `start()`, and `stop()` for repeated manual use.
-- `defined_messages.json`: fixed name-to-message map used by `py_serial.send_defined()`.
-- `sample_scenario.py`: simple example that sends `AA BB`, checks the received bytes, then sends `CC` or `DD`.
+- `message_helpers.py`: predefined helper functions such as `send_idle()`, `start()`, and `stop()` for repeated manual use.
+- `messages.json`: fixed name-to-message map used by `py_serial.send_defined()`.
+- `example_scenario.py`: simple example that sends `AA BB`, checks the received bytes, then sends `CC` or `DD`.
 - `config.json`: serial settings, receive timing, and logging only.
 - `.vscode/tasks.json`: install, interactive, predefined-message, and example-run tasks.
 - `.vscode/settings.json`: Task Buttons configuration for the main tasks.
@@ -47,9 +47,9 @@ These values are passed to `serial.Serial(...)`:
 - `receive_inter_byte_timeout_seconds`: after the first byte arrives, stop reading when this gap passes with no new byte.
 - `log_directory`: folder for log files.
 
-`config.json` does not contain message payloads. Keep bus settings here, and put example messages or scripted decisions in `sample_scenario.py`. The config file location is fixed in `py_serial.py`, so users do not need to pass a config path around.
+`config.json` does not contain message payloads. Keep bus settings here, and put example messages or scripted decisions in `example_scenario.py`. The config file location is fixed in `py_serial.py`, so users do not need to pass a config path around.
 
-Predefined named messages are stored in `defined_messages.json`, and `py_serial.send_defined("name")` looks them up automatically.
+Predefined named messages are stored in `messages.json`, and `py_serial.send_defined("name")` looks them up automatically.
 
 ## Run In VS Code
 
@@ -57,17 +57,17 @@ Run the task `Python: Interactive py_serial`.
 
 That opens a Python REPL with `py_serial.py` already loaded, so you can call the functions directly.
 
-Run the task `Python: Interactive defined_messages`.
+Run the task `Python: Interactive message_helpers`.
 
-That opens a Python REPL with `defined_messages.py` already loaded, so you can call `connect()`, `disconnect()`, `show_config()`, `send_idle()`, `start()`, or `stop()` without typing the message bytes each time.
+That opens a Python REPL with `message_helpers.py` already loaded, so you can call `connect()`, `disconnect()`, `show_config()`, `send_idle()`, `start()`, or `stop()` without typing the message bytes each time.
 
 Run the tasks `Python: Send idle`, `Python: Start`, or `Python: Stop`.
 
 Those tasks call the predefined functions directly and print the received message to the terminal.
 
-Run the task `Python: Run sample scenario`.
+Run the task `Python: Run example scenario`.
 
-That executes `sample_scenario.py`, which shows a simple fixed example on top of `py_serial.py`.
+That executes `example_scenario.py`, which shows a simple fixed example on top of `py_serial.py`.
 
 Task Buttons users can use the buttons from `.vscode/settings.json` to run install, interactive, predefined-message, or example tasks directly from the UI.
 
@@ -91,7 +91,7 @@ If you want to keep the same serial connection open across several manual calls,
 
 ## Defined Messages
 
-`defined_messages.py` is a lightweight helper layer on top of `py_serial.py`.
+`message_helpers.py` is a lightweight helper layer on top of `py_serial.py`.
 
 It reuses the original `connect()`, `disconnect()`, `show_config()`, and `send_defined()` from `py_serial.py` directly, and only adds the named helper wrappers.
 
@@ -109,7 +109,7 @@ stop()
 
 Each function transmits once, receives once, prints the received message to the terminal, and returns the received hex array.
 
-The actual bytes are defined in `defined_messages.json`:
+The actual bytes are defined in `messages.json`:
 
 ```json
 {
@@ -123,7 +123,7 @@ Change those entries to match your protocol.
 
 ## Scripted Example
 
-`sample_scenario.py` demonstrates this simple flow on a persistent serial session:
+`example_scenario.py` demonstrates this simple flow on a persistent serial session:
 
 1. Send `AA BB`.
 2. Receive one response.
@@ -135,10 +135,10 @@ Change those entries to match your protocol.
 Example entry point:
 
 ```bash
-python sample_scenario.py
+python example_scenario.py
 ```
 
-If you want a different fixed scenario, copy `sample_scenario.py` and change the messages or response check directly in code.
+If you want a different fixed scenario, copy `example_scenario.py` and change the messages or response check directly in code.
 
 ## Message Formats
 
@@ -156,11 +156,11 @@ If you want a different fixed scenario, copy `sample_scenario.py` and change the
 ## Notes
 
 - `send_and_receive()` sends once, then reads once on the same port.
-- `send_defined()` sends once and receives once by looking up a message name in `defined_messages.json`.
+- `send_defined()` sends once and receives once by looking up a message name in `messages.json`.
 - `connect()` and `disconnect()` activity is logged through the underlying session open/close path.
 - `SerialSession` keeps the port open for repeated calls when you want a persistent manual session.
 - On receive timeout with no data, the receive functions return `[]`.
 - `send_once()` and `send_and_receive()` require an explicit message argument.
-- `defined_messages.py` gives you named helper functions so you do not have to type the hex bytes manually every time.
-- `sample_scenario.py` is an example layer on top of `py_serial.py`; it does not replace the interactive workflow.
+- `message_helpers.py` gives you named helper functions so you do not have to type the hex bytes manually every time.
+- `example_scenario.py` is an example layer on top of `py_serial.py`; it does not replace the interactive workflow.
 - Change `config.json` whenever you want different serial settings or timeouts.

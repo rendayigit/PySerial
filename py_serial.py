@@ -9,7 +9,7 @@ import serial
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
-DEFINED_MESSAGES_PATH = BASE_DIR / "defined_messages.json"
+MESSAGES_PATH = BASE_DIR / "messages.json"
 STATE: dict[str, Any] = {"default_session": None, "log_file_path": None}
 SERIAL_OPTION_KEYS = [
     "port",
@@ -72,15 +72,15 @@ def require_message(message: str | None) -> str:
     return message
 
 
-def load_defined_messages() -> dict[str, str]:
-    data = json.loads(DEFINED_MESSAGES_PATH.read_text(encoding="utf-8"))
+def load_named_messages() -> dict[str, str]:
+    data = json.loads(MESSAGES_PATH.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not data:
-        raise ValueError("defined_messages.json must contain a name-to-message object")
+        raise ValueError("messages.json must contain a name-to-message object")
 
     normalized_messages: dict[str, str] = {}
     for raw_name, raw_message in data.items():
         if not isinstance(raw_name, str):
-            raise ValueError("defined_messages.json keys must be strings")
+            raise ValueError("messages.json keys must be strings")
 
         if not isinstance(raw_message, str):
             raise ValueError(
@@ -89,12 +89,10 @@ def load_defined_messages() -> dict[str, str]:
 
         normalized_name = raw_name.strip().lower()
         if not normalized_name:
-            raise ValueError("defined_messages.json cannot contain empty names")
+            raise ValueError("messages.json cannot contain empty names")
 
         if normalized_name in normalized_messages:
-            raise ValueError(
-                f"defined_messages.json contains a duplicate name: '{raw_name}'"
-            )
+            raise ValueError(f"messages.json contains a duplicate name: '{raw_name}'")
 
         normalized_messages[normalized_name] = bytes_to_hex_string(
             parse_hex_message(raw_message)
@@ -327,16 +325,16 @@ def send_defined(
     session: SerialSession | None = None,
 ) -> list[str]:
     lookup_name = require_message(name).strip().lower()
-    defined_messages = load_defined_messages()
+    named_messages = load_named_messages()
 
-    if lookup_name not in defined_messages:
-        available_names = ", ".join(sorted(defined_messages))
+    if lookup_name not in named_messages:
+        available_names = ", ".join(sorted(named_messages))
         raise ValueError(
             f"unknown defined message '{name}'. Available messages: {available_names}"
         )
 
     return send_and_receive(
-        defined_messages[lookup_name],
+        named_messages[lookup_name],
         config=config,
         session=session,
     )
@@ -351,7 +349,8 @@ CONFIG = load_config()
 if __name__ == "__main__":
     print(
         "Interactive helpers loaded: \n- load_config\n- show_config\n- connect\n- "
-        "disconnect\n- get_default_session\n- load_defined_messages\n- "
+        "disconnect\n- get_default_session\n- load_named_messages\n- "
         "send_once\n- receive_once\n- send_and_receive\n- send_defined\n- "
+        "receive_once\n- send_and_receive\n- send_defined\n- "
         "SerialSession"
     )
