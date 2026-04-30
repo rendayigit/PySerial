@@ -1,0 +1,45 @@
+{
+  "VsCodeTaskButtons.showCounter": false,
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "$(desktop-download) Install",
+      "task": "Python: Install requirements",
+      "tooltip": "Install the Python dependencies from requirements.txt"
+    },
+    {
+      "label": "$(terminal-powershell) Interactive",
+      "task": "Python: Interactive py_serial",
+      "tooltip": "Open the interactive serial REPL with py_serial.py loaded"
+    },
+    {
+      "label": "$(symbol-function) Defined Messages",
+      "tasks": [
+        {
+          "label": "Interactive defined_messages",
+          "task": "Python: Interactive defined_messages",
+          "description": "$(terminal-powershell) Open defined_messages.py in an interactive Python terminal"
+        },
+        {
+          "label": "Send idle",
+          "task": "Python: Send idle",
+          "description": "$(send) Transmit the predefined idle message once"
+        },
+        {
+          "label": "Start",
+          "task": "Python: Start",
+          "description": "$(debug-start) Transmit the predefined start message once"
+        },
+        {
+          "label": "Stop",
+          "task": "Python: Stop",
+          "description": "$(debug-stop) Transmit the predefined stop message once"
+        }
+      ]
+    },
+    {
+      "label": "$(testing-run-icon) Run Example",
+      "task": "Python: Run sample scenario",
+      "tooltip": "Run the simple scripted serial example from sample_scenario.py"
+    }
+  ]
+}
