@@ -1,26 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
+from py_serial import connect, disconnect, send_defined, show_config
 
-import py_serial
-
-# Replace these three message constants with the command bytes for your device.
-IDLE_MESSAGE = "00"
-START_MESSAGE = "01"
-STOP_MESSAGE = "02"
-CONFIG = py_serial.load_config()
-
-
-def connect(config: dict[str, Any] | None = None) -> py_serial.SerialSession:
-    return py_serial.connect(config or CONFIG)
-
-
-def disconnect() -> None:
-    py_serial.disconnect()
-
-
-def show_config() -> dict[str, Any]:
-    return py_serial.show_config(CONFIG)
+INTERACTIVE_HELPER_NAMES = [
+    connect.__name__,
+    disconnect.__name__,
+    show_config.__name__,
+    send_defined.__name__,
+    "send_idle",
+    "start",
+    "stop",
+]
 
 
 def _print_received_message(label: str, response: list[str]) -> None:
@@ -32,43 +22,24 @@ def _print_received_message(label: str, response: list[str]) -> None:
 
 
 def _send_defined_message(
-    message: str,
-    label: str,
-    config: dict[str, Any] | None = None,
-    session: py_serial.SerialSession | None = None,
+    name: str,
 ) -> list[str]:
-    response = py_serial.send_and_receive(
-        message,
-        config=config or CONFIG,
-        session=session,
-    )
-    _print_received_message(label, response)
+    response = send_defined(name)
+    _print_received_message(name.upper(), response)
     return response
 
 
-def send_idle(
-    config: dict[str, Any] | None = None,
-    session: py_serial.SerialSession | None = None,
-) -> list[str]:
-    return _send_defined_message(IDLE_MESSAGE, "IDLE", config, session)
+def send_idle() -> list[str]:
+    return _send_defined_message("idle")
 
 
-def start(
-    config: dict[str, Any] | None = None,
-    session: py_serial.SerialSession | None = None,
-) -> list[str]:
-    return _send_defined_message(START_MESSAGE, "START", config, session)
+def start() -> list[str]:
+    return _send_defined_message("start")
 
 
-def stop(
-    config: dict[str, Any] | None = None,
-    session: py_serial.SerialSession | None = None,
-) -> list[str]:
-    return _send_defined_message(STOP_MESSAGE, "STOP", config, session)
+def stop() -> list[str]:
+    return _send_defined_message("stop")
 
 
 if __name__ == "__main__":
-    print(
-        "Interactive helpers loaded: \n- show_config\n- connect\n- "
-        "disconnect\n- send_idle\n- start\n- stop"
-    )
+    print("Interactive helpers loaded: \n- " + "\n- ".join(INTERACTIVE_HELPER_NAMES))

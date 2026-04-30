@@ -9,6 +9,7 @@ import serial
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
+DEFINED_MESSAGES_PATH = BASE_DIR / "defined_messages.json"
 STATE: dict[str, Any] = {"default_session": None, "log_file_path": None}
 SERIAL_OPTION_KEYS = [
     "port",
@@ -26,9 +27,8 @@ SERIAL_OPTION_KEYS = [
 ]
 
 
-def load_config(config_path: Path | str = CONFIG_PATH) -> dict[str, Any]:
-    path = Path(config_path)
-    data = json.loads(path.read_text(encoding="utf-8"))
+def load_config() -> dict[str, Any]:
+    data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
     if "serial" not in data or "app" not in data:
         raise ValueError("config.json must contain 'serial' and 'app' sections")
@@ -70,6 +70,37 @@ def require_message(message: str | None) -> str:
         raise ValueError("message is required; pass a hex string like 'AA BB'")
 
     return message
+
+
+def load_defined_messages() -> dict[str, str]:
+    data = json.loads(DEFINED_MESSAGES_PATH.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not data:
+        raise ValueError("defined_messages.json must contain a name-to-message object")
+
+    normalized_messages: dict[str, str] = {}
+    for raw_name, raw_message in data.items():
+        if not isinstance(raw_name, str):
+            raise ValueError("defined_messages.json keys must be strings")
+
+        if not isinstance(raw_message, str):
+            raise ValueError(
+                f"defined message '{raw_name}' must be a hex string like 'AA BB'"
+            )
+
+        normalized_name = raw_name.strip().lower()
+        if not normalized_name:
+            raise ValueError("defined_messages.json cannot contain empty names")
+
+        if normalized_name in normalized_messages:
+            raise ValueError(
+                f"defined_messages.json contains a duplicate name: '{raw_name}'"
+            )
+
+        normalized_messages[normalized_name] = bytes_to_hex_string(
+            parse_hex_message(raw_message)
+        )
+
+    return normalized_messages
 
 
 def bytes_to_hex_array(data: bytes) -> list[str]:
@@ -281,6 +312,27 @@ def send_and_receive(
             active_session.close()
 
 
+def send_defined(
+    name: str,
+    config: dict[str, Any] | None = None,
+    session: SerialSession | None = None,
+) -> list[str]:
+    lookup_name = require_message(name).strip().lower()
+    defined_messages = load_defined_messages()
+
+    if lookup_name not in defined_messages:
+        available_names = ", ".join(sorted(defined_messages))
+        raise ValueError(
+            f"unknown defined message '{name}'. Available messages: {available_names}"
+        )
+
+    return send_and_receive(
+        defined_messages[lookup_name],
+        config=config,
+        session=session,
+    )
+
+
 def show_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     return config or load_config()
 
@@ -290,6 +342,7 @@ CONFIG = load_config()
 if __name__ == "__main__":
     print(
         "Interactive helpers loaded: \n- load_config\n- show_config\n- connect\n- "
-        "disconnect\n- get_default_session\n- send_once\n- receive_once\n- "
-        "send_and_receive\n- SerialSession"
+        "disconnect\n- get_default_session\n- load_defined_messages\n- "
+        "send_once\n- receive_once\n- send_and_receive\n- send_defined\n- "
+        "SerialSession"
     )
