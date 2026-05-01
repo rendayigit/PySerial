@@ -43,9 +43,7 @@ def load_config() -> dict[str, Any]:
         raise ValueError("config.json app.receive_timeout_seconds must be set")
 
     if app_config.get("receive_inter_byte_timeout_seconds") is None:
-        raise ValueError(
-            "config.json app.receive_inter_byte_timeout_seconds must be set"
-        )
+        raise ValueError("config.json app.receive_inter_byte_timeout_seconds must be set")
 
     return data
 
@@ -83,9 +81,7 @@ def load_named_messages() -> dict[str, str]:
             raise ValueError("messages.json keys must be strings")
 
         if not isinstance(raw_message, str):
-            raise ValueError(
-                f"defined message '{raw_name}' must be a hex string like 'AA BB'"
-            )
+            raise ValueError(f"defined message '{raw_name}' must be a hex string like 'AA BB'")
 
         normalized_name = raw_name.strip().lower()
         if not normalized_name:
@@ -94,9 +90,7 @@ def load_named_messages() -> dict[str, str]:
         if normalized_name in normalized_messages:
             raise ValueError(f"messages.json contains a duplicate name: '{raw_name}'")
 
-        normalized_messages[normalized_name] = bytes_to_hex_string(
-            parse_hex_message(raw_message)
-        )
+        normalized_messages[normalized_name] = bytes_to_hex_string(parse_hex_message(raw_message))
 
     return normalized_messages
 
@@ -111,11 +105,7 @@ def bytes_to_hex_string(data: bytes) -> str:
 
 def serial_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
     current_config = config or load_config()
-    return {
-        key: current_config["serial"][key]
-        for key in SERIAL_OPTION_KEYS
-        if key in current_config["serial"]
-    }
+    return {key: current_config["serial"][key] for key in SERIAL_OPTION_KEYS if key in current_config["serial"]}
 
 
 def open_port(config: dict[str, Any] | None = None) -> serial.Serial:
@@ -137,9 +127,7 @@ def _log_path(config: dict[str, Any]) -> Path:
     return log_file_path
 
 
-def log_message(
-    direction: str, message: str, config: dict[str, Any] | None = None
-) -> Path:
+def log_message(direction: str, message: str, config: dict[str, Any] | None = None) -> Path:
     current_config = config or load_config()
     log_file = _log_path(current_config)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -260,9 +248,7 @@ def disconnect() -> None:
     STATE["default_session"] = None
 
 
-def _resolve_session(
-    config: dict[str, Any] | None = None, session: SerialSession | None = None
-) -> tuple[SerialSession, bool]:
+def _resolve_session(config: dict[str, Any] | None = None, session: SerialSession | None = None) -> tuple[SerialSession, bool]:
     if session is not None:
         session.open()
         return session, False
@@ -279,11 +265,7 @@ def _resolve_session(
     return temporary_session, True
 
 
-def send_once(
-    message: str | None = None,
-    config: dict[str, Any] | None = None,
-    session: SerialSession | None = None,
-) -> str:
+def send_once(message: str | None = None, config: dict[str, Any] | None = None, session: SerialSession | None = None) -> str:
     explicit_message = require_message(message)
     active_session, should_close = _resolve_session(config, session)
     try:
@@ -293,10 +275,7 @@ def send_once(
             active_session.close()
 
 
-def receive_once(
-    config: dict[str, Any] | None = None,
-    session: SerialSession | None = None,
-) -> list[str]:
+def receive_once(config: dict[str, Any] | None = None, session: SerialSession | None = None) -> list[str]:
     active_session, should_close = _resolve_session(config, session)
     try:
         return active_session.receive_once()
@@ -305,11 +284,7 @@ def receive_once(
             active_session.close()
 
 
-def send_and_receive(
-    message: str | None = None,
-    config: dict[str, Any] | None = None,
-    session: SerialSession | None = None,
-) -> list[str]:
+def send_and_receive(message: str | None = None, config: dict[str, Any] | None = None, session: SerialSession | None = None) -> list[str]:
     explicit_message = require_message(message)
     active_session, should_close = _resolve_session(config, session)
     try:
@@ -319,19 +294,13 @@ def send_and_receive(
             active_session.close()
 
 
-def send_defined(
-    name: str,
-    config: dict[str, Any] | None = None,
-    session: SerialSession | None = None,
-) -> list[str]:
+def send_defined(name: str, config: dict[str, Any] | None = None, session: SerialSession | None = None) -> list[str]:
     lookup_name = require_message(name).strip().lower()
     named_messages = load_named_messages()
 
     if lookup_name not in named_messages:
         available_names = ", ".join(sorted(named_messages))
-        raise ValueError(
-            f"unknown defined message '{name}'. Available messages: {available_names}"
-        )
+        raise ValueError(f"unknown defined message '{name}'. Available messages: {available_names}")
 
     return send_and_receive(
         named_messages[lookup_name],

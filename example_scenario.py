@@ -59,9 +59,7 @@ def run_example(
     current_config = config or py_serial.load_config()
 
     if send_and_receive_func is not None:
-        return _run_example(
-            lambda message: send_and_receive_func(message, current_config)
-        )
+        return _run_example(lambda message: send_and_receive_func(message, current_config))
 
     with py_serial.SerialSession(current_config) as session:
         return _run_example(session.send_and_receive)
