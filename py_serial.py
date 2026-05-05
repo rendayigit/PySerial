@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
 
 import serial
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
 MESSAGES_PATH = BASE_DIR / "messages.json"
-STATE: dict[str, Any] = {"default_session": None, "log_file_path": None}
+STATE: dict[str, Any] = {"default_session": None, "log_file_path": None, "named_messages": None}
 SERIAL_OPTION_KEYS = [
     "port",
     "baudrate",
@@ -28,6 +30,9 @@ SERIAL_OPTION_KEYS = [
 
 
 def load_config() -> dict[str, Any]:
+    if STATE.get("config") is not None:
+        return STATE["config"]
+
     data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
     if "serial" not in data or "app" not in data:
@@ -45,6 +50,7 @@ def load_config() -> dict[str, Any]:
     if app_config.get("receive_inter_byte_timeout_seconds") is None:
         raise ValueError("config.json app.receive_inter_byte_timeout_seconds must be set")
 
+    STATE["config"] = data
     return data
 
 
@@ -71,6 +77,9 @@ def require_message(message: str | None) -> str:
 
 
 def load_named_messages() -> dict[str, str]:
+    if STATE["named_messages"] is not None:
+        return STATE["named_messages"]
+
     data = json.loads(MESSAGES_PATH.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not data:
         raise ValueError("messages.json must contain a name-to-message object")
@@ -92,6 +101,7 @@ def load_named_messages() -> dict[str, str]:
 
         normalized_messages[normalized_name] = bytes_to_hex_string(parse_hex_message(raw_message))
 
+    STATE["named_messages"] = normalized_messages
     return normalized_messages
 
 
@@ -130,10 +140,18 @@ def _log_path(config: dict[str, Any]) -> Path:
 def log_message(direction: str, message: str, config: dict[str, Any] | None = None) -> Path:
     current_config = config or load_config()
     log_file = _log_path(current_config)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    entry = f"{timestamp} | {direction:<7} | {message}\n"
-    existing = log_file.read_text(encoding="utf-8") if log_file.exists() else ""
-    log_file.write_text(entry + existing, encoding="utf-8")
+
+    logger = logging.getLogger("py_serial")
+    if not logger.handlers or not any(isinstance(h, logging.FileHandler) and h.baseFilename == str(log_file.resolve()) for h in logger.handlers):
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+        formatter = logging.Formatter("%(asctime)s.%(msecs)03d | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    logger.info("%-7s | %s", direction, message)
     return log_file
 
 
@@ -160,7 +178,8 @@ def _receive_from_port(port: serial.Serial, config: dict[str, Any]) -> list[str]
     port.timeout = app_config["receive_inter_byte_timeout_seconds"]
 
     while True:
-        chunk = port.read(1)
+        waiting = port.in_waiting
+        chunk = port.read(waiting if waiting > 0 else 1)
         if not chunk:
             break
         received.extend(chunk)
