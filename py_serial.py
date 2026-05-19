@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
+import serial
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import serial
-
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
 MESSAGES_PATH = BASE_DIR / "messages.json"
-STATE: dict[str, Any] = {"default_session": None, "log_file_path": None}
+STATE: dict[str, Any] = {"default_session": None, "log_file_path": None, "named_messages": None}
 SERIAL_OPTION_KEYS = [
     "port",
     "baudrate",
@@ -28,6 +28,9 @@ SERIAL_OPTION_KEYS = [
 
 
 def load_config() -> dict[str, Any]:
+    if STATE.get("config") is not None:
+        return STATE["config"]
+
     data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
     if "serial" not in data or "app" not in data:
@@ -45,6 +48,7 @@ def load_config() -> dict[str, Any]:
     if app_config.get("receive_inter_byte_timeout_seconds") is None:
         raise ValueError("config.json app.receive_inter_byte_timeout_seconds must be set")
 
+    STATE["config"] = data
     return data
 
 
@@ -71,6 +75,9 @@ def require_message(message: str | None) -> str:
 
 
 def load_named_messages() -> dict[str, str]:
+    if STATE["named_messages"] is not None:
+        return STATE["named_messages"]
+
     data = json.loads(MESSAGES_PATH.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not data:
         raise ValueError("messages.json must contain a name-to-message object")
@@ -92,6 +99,7 @@ def load_named_messages() -> dict[str, str]:
 
         normalized_messages[normalized_name] = bytes_to_hex_string(parse_hex_message(raw_message))
 
+    STATE["named_messages"] = normalized_messages
     return normalized_messages
 
 
@@ -127,13 +135,21 @@ def _log_path(config: dict[str, Any]) -> Path:
     return log_file_path
 
 
-def log_message(direction: str, message: str, config: dict[str, Any] | None = None) -> Path:
+def log_message(message: str, config: dict[str, Any] | None = None) -> Path:
     current_config = config or load_config()
     log_file = _log_path(current_config)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    entry = f"{timestamp} | {direction:<7} | {message}\n"
-    existing = log_file.read_text(encoding="utf-8") if log_file.exists() else ""
-    log_file.write_text(entry + existing, encoding="utf-8")
+    logger = logging.getLogger("py_serial")
+
+    if not logger.handlers or not any(isinstance(h, logging.FileHandler) and h.baseFilename == str(log_file.resolve()) for h in logger.handlers):
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+        formatter = logging.Formatter("%(asctime)s.%(msecs)03d | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    logger.info(message)
     return log_file
 
 
@@ -143,30 +159,39 @@ def _send_to_port(port: serial.Serial, message: str, config: dict[str, Any]) -> 
     port.flush()
 
     pretty_message = bytes_to_hex_string(payload)
-    log_message("TX", pretty_message, config)
+    log_message("TX: " + pretty_message, config)
     return pretty_message
 
 
 def _receive_from_port(port: serial.Serial, config: dict[str, Any]) -> list[str]:
     app_config = config["app"]
     port.timeout = app_config["receive_timeout_seconds"]
+
     first_byte = port.read(1)
 
     if not first_byte:
-        log_message("RX TIME", "<timeout>", config)
+        log_message("<timeout>", config)
         return []
 
     received = bytearray(first_byte)
-    port.timeout = app_config["receive_inter_byte_timeout_seconds"]
 
-    while True:
-        chunk = port.read(1)
-        if not chunk:
-            break
-        received.extend(chunk)
+    # OPTIMIZATION: If it's a framed message starting with C0, read until the closing C0
+    if first_byte == b"\xc0":
+        # The OS will block and return instantly the moment the closing C0 arrives.
+        rest_of_message = port.read_until(b"\xc0")
+        received.extend(rest_of_message)
+    else:
+        # Fallback: If it's NOT a C0 message, use the old inter-byte timeout logic
+        port.timeout = app_config["receive_inter_byte_timeout_seconds"]
+        while True:
+            waiting = port.in_waiting
+            chunk = port.read(waiting if waiting > 0 else 1)
+            if not chunk:
+                break
+            received.extend(chunk)
 
     message = bytes_to_hex_array(bytes(received))
-    log_message("RX", " ".join(message), config)
+    log_message("RX: " + " ".join(message), config)
     return message
 
 
@@ -188,14 +213,14 @@ class SerialSession:
     def open(self) -> SerialSession:
         if not self.is_open:
             self.port = open_port(self.config)
-            log_message("OPEN", self._port_name(), self.config)
+            log_message(self._port_name(), self.config)
         return self
 
     def close(self) -> None:
         if self.port is not None:
             port_name = self._port_name()
             self.port.close()
-            log_message("CLOSE", port_name, self.config)
+            log_message(port_name, self.config)
             self.port = None
 
     def send_once(self, message: str | None = None) -> str:
@@ -203,6 +228,7 @@ class SerialSession:
         if self.port is None:
             raise RuntimeError("serial port is not open")
 
+        self.port.reset_input_buffer()
         hex_message = require_message(message)
         return _send_to_port(self.port, hex_message, self.config)
 
@@ -253,16 +279,9 @@ def _resolve_session(config: dict[str, Any] | None = None, session: SerialSessio
         session.open()
         return session, False
 
-    default_session = STATE.get("default_session")
-    if isinstance(default_session, SerialSession):
-        if config is not None:
-            default_session.config = config
-        default_session.open()
-        return default_session, False
-
-    temporary_session = SerialSession(config)
-    temporary_session.open()
-    return temporary_session, True
+    active_session = get_default_session(config)
+    active_session.open()
+    return active_session, False
 
 
 def send_once(message: str | None = None, config: dict[str, Any] | None = None, session: SerialSession | None = None) -> str:

@@ -22,6 +22,8 @@ dist/
 # Local logs
 logs/
 *.log
+plots/
+*.png
 
 # Editors
 .idea/

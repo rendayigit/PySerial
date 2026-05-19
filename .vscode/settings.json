@@ -37,6 +37,11 @@
       ]
     },
     {
+      "label": "$(refresh) Serial Loopback",
+      "task": "Python: Serial Loopback",
+      "tooltip": "Run the loopback echo server on /dev/ttyUSB1"
+    },
+    {
       "label": "$(testing-run-icon) Run Example",
       "task": "Python: Run example scenario",
       "tooltip": "Run the simple scripted serial example from example_scenario.py"
